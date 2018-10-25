@@ -11,7 +11,11 @@ class Network(object):
         network are initialized randomly."""
         self.num_layers = len(sizes)
         self.sizes = sizes
+		# Returns samples from a 'standard normal' distribution. Randomizes biases
+		# Creates a list of bias for each layer
         self.biases = [np.random.randn(y, 1) for y in sizes[1:]]
+		# Returns samples from a 'standard normal' distribution. Randomizes weights
+		# Creates a vector of weights for each input to the neuron
         self.weights = [np.random.randn(y, x)
                         for x, y in zip(sizes[:-1], sizes[1:])]
 
@@ -48,12 +52,17 @@ class Network(object):
         """Update the network's weights and biases by applying
         gradient descent using backpropagation to a single mini batch.
         `eta` is the learning rate."""
+		# Returns arrays of zeroes with the shape of each bias/weight
         nabla_b = [np.zeros(b.shape) for b in self.biases]
         nabla_w = [np.zeros(w.shape) for w in self.weights]
         for x, y in mini_batch:
+			# Backpropogate, returns changes to biases and weights
             delta_nabla_b, delta_nabla_w = self.backprop(x, y)
+			# Update nabla_b/w after each mini_batch backprops
             nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
             nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
+		# Adjusts biases/weights with respect to learning speed and
+		# mini batch size
         self.weights = [w-(eta/len(mini_batch))*nw
                         for w, nw in zip(self.weights, nabla_w)]
         self.biases = [b-(eta/len(mini_batch))*nb
@@ -64,22 +73,32 @@ class Network(object):
         gradient for the cost function C_x.  `nabla_b` and
         `nabla_w` are layer-by-layer lists of cupy arrays, similar
         to `self.biases` and `self.weights`."""
+		# Returns arrays of zeroses with the shape of each bias/weight
         nabla_b = [cp.zeros(b.shape) for b in self.biases]
         nabla_w = [cp.zeros(w.shape) for w in self.weights]
+
         # feedforward
-        activation = x
+        activation = x # mini_batch input
         activations = [x] # list to store all the activations, layer by layer
         zs = [] # list to store all the z vectors, layer by layer
         for b, w in zip(self.biases, self.weights):
+			# z is the sum of weights * activations
             z = cp.dot(w, activation)+b
             zs.append(z)
+			# sigmoid clamps z to 0-1
             activation = sigmoid(z)
             activations.append(activation)
-        # backward pass
+        # BACKWARD PASS - THIS IS THE PART WHERE IT LEARNS
+		# delta is the difference between the final activation and
+		# the expected activation, times the slope of the final vector
+		# of z
         delta = self.cost_derivative(activations[-1], y) * \
             sigmoid_prime(zs[-1])
         nabla_b[-1] = delta
+		# weight is the dot product of delta and previous layer
+		# activations (vector is rotated here)
         nabla_w[-1] = cp.dot(delta, activations[-2].transpose())
+		# repeat this process for each layer, moving backwards
         for l in range(2, self.num_layers):
             z = zs[-l]
             sp = sigmoid_prime(z)
@@ -93,8 +112,10 @@ class Network(object):
         network outputs the correct result. Note that the neural
         network's output is assumed to be the index of whichever
         neuron in the final layer has the highest activation."""
+		# Sets result to highest activation in final layer
         test_results = [(np.argmax(self.feedforward(x)), y)
                         for (x, y) in test_data]
+		# Returns sum of correct guesses
         return sum(int(x == y) for (x, y) in test_results)
 
     def cost_derivative(self, output_activations, y):
